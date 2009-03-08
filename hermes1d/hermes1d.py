@@ -226,7 +226,7 @@ class DiscreteProblem(object):
         """
         self._meshes = meshes
 
-    def set_rhs(self, F, J):
+    def set_rhs(self, Phi, dPhi_dy, dPhi_dz):
         """
         Sets the rhs for ODE.
 
@@ -234,8 +234,9 @@ class DiscreteProblem(object):
         >>> e = DiscreteProblem([m1, m2])
         >>> e.set_rhs(F, J)
         """
-        self._F = F
-        self._J = J
+        self._Phi = Phi
+        self._dPhi_dy = dPhi_dy
+        self._dPhi_dz = dPhi_dz
 
     def get_mesh_number(self, global_dof_number):
         for mi, m in enumerate(self._meshes):
@@ -266,7 +267,7 @@ class DiscreteProblem(object):
                             continue
                         mi = self.get_mesh_number(i_glob)
                         mj = self.get_mesh_number(j_glob)
-                        f = self._J(mi, mj)
+                        #f = self._J(mi, mj)
                         # now f = f(y1, y2, ..., t)
                         def func(x):
                             # x is the integration point, we need to determine
@@ -280,11 +281,12 @@ class DiscreteProblem(object):
                             y1 = 0
                             y2 = 0
                             x_phys = e.ref2phys(x)
-                            y.append(x_phys)
-                            f_user = f(*y)
+                            f_user = self._dPhi_dy(mi, mj, y, [0]*len(y),
+                                    x_phys)
                             return f_user * \
                                         e.shape_function(i, x) * \
                                         e.shape_function(j, x)
+                        # XXX: use dphi_y
                         dphi_phi = e.integrate_dphi_phi(j, i)
                         df_phi_phi, err = quadrature(func, -1, 1)
                         df_phi_phi *= e.jacobian
@@ -310,6 +312,18 @@ class DiscreteProblem(object):
         #print val, e.dofs
         return val
 
+    def get_sol_deriv(self, mesh_num, el_num, Y, x, count_lift=True):
+        m = self._meshes[mesh_num]
+        e = m.elements[el_num]
+        val = 0.
+        for i, g in enumerate(e.dofs):
+            if g == -1:
+                if count_lift:
+                    val += e.shape_function_deriv(i, x)*e.get_dirichlet_value(i)
+            else:
+                val += e.shape_function_deriv(i, x)*Y[g]
+        return val
+
     def assemble_F(self, Y=None):
         if Y is None:
             Y = zeros((self._ndofs,))
@@ -321,50 +335,25 @@ class DiscreteProblem(object):
                     if i_glob == -1:
                         continue
                     mi = self.get_mesh_number(i_glob)
-                    f = self._F(mi)
+                    #f = self._F(mi)
                     # now f = f(y1, y2, ..., t)
-                    def func1(x):
+                    def func(x):
                         # x is the integration point, we need to determine
                         # the values of y1, y2, ... at this integration
                         # point.
 
-                        v = 0.
-                        for j in range(len(e.dofs)):
-                            g = e.dofs[j]
-                            if g == -1:
-                                coeff = e.get_dirichlet_value(j)
-                                #print "XX", e.dofs, j
-                            else:
-                                coeff = Y[g]
-                            v += coeff*e.shape_function_deriv(j, x)
-                        #print "deriv", el_num, x, v
-                        v = v*e.shape_function(i, x)
-                        return v
-                    du_phi, err = quadrature(func1, -1, 1)
-                    def func2(x):
-                        # x is the integration point, we need to determine
-                        # the values of y1, y2, ... at this integration
-                        # point.
-
-                        # XXX: this only works if all the meshes are the same:
-                        y = [self.get_sol_value(_i, el_num, Y, x) for _i \
+                        U = [self.get_sol_value(_i, el_num, Y, x) for _i \
                                 in range(len(self._meshes))]
-                        x_phys = e.ref2phys(x)
-                        y.append(x_phys)
-                        return f(*y) * e.shape_function(i, x)
-                    #if el_num == 0:
-                    #    print "func", func2(array([-1, -0.9, -0.5, 0, 0.5, 0.9,
-                    #        1]))
-                    #print "f", f(0, array([-1, -0.9, -0.5, 0, 0.5, 0.9,
-                    #        1]))
-                    #print "func", func2(array([-1, -0.9, -0.5, 0, 0.5, 0.9,
-                    #        1]))
-                    #stop
-
-                    f_phi, err = quadrature(func2, -1., 1.)
-                    f_phi *= e.jacobian
+                        # XXX: this is just our wild guess to multiply with the
+                        # jacobian, it may just be wrong...
+                        Z = [self.get_sol_deriv(_i, el_num, Y, x)/e.jacobian for _i \
+                                in range(len(self._meshes))]
+                        v = self._Phi(mi, U, Z, x) * e.shape_function(i, x)
+                        return v
+                    phi, err = quadrature(func, -1, 1)
+                    phi *= e.jacobian
                     #print "X", i_glob, el_num, i, du_phi, f_phi
-                    F[i_glob] += du_phi - f_phi
+                    F[i_glob] += phi
         #print Y
         #print "get_sol_value"
         #print self.get_sol_value(0, 0, Y, 1)

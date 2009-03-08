@@ -40,6 +40,26 @@ def J(i, j):
     elif i == 1 and j == 1:
         return f22
     raise ValueError("Wrong i, j (i=%d, j=%d)." % (i, j))
+def Phi(i, U, Z, t):
+    if i == 0:
+        return -U[0]+U[1] - Z[0]
+    elif i == 1:
+        return U[1] - Z[1]
+    raise ValueError("Wrong i (i=%d)." % (i))
+def dPhi_dy(i, j, U, Z, t):
+    if i == 0:
+        if j == 0: return -1
+        elif j == 1: return 1
+    elif i == 1:
+        if j == 0: return 0.
+        elif j == 1: return 1
+def dPhi_dz(i, j, U, Z, t):
+    if i == 0:
+        if j == 0: return -1
+        elif j == 1: return 0
+    elif i == 1:
+        if j == 0: return 0
+        elif j == 1: return -1
 def F(i):
     def f1(y1, y2, t):
         return y2
@@ -50,7 +70,7 @@ def F(i):
     elif i == 1:
         return f2
     raise ValueError("Wrong i (i=%d)." % (i))
-d.set_rhs(F, J)
+d.set_rhs(Phi, dPhi_dy, dPhi_dz)
 d.assign_dofs()
 J = d.assemble_J()
 Y = zeros((J.shape[0],))
