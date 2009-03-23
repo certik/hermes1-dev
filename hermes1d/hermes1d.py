@@ -460,6 +460,22 @@ class DiscreteProblem(object):
             solutions.append((x_list, y_list))
         return solutions
 
+    def plot_Y(self, Y):
+        """
+        Plots the solution
+        """
+        # plot the result:
+        from pylab import plot, legend, show, clf, axis
+        clf()
+        # linearize the solution, divide each element into 5
+        sln1, = self.linearize(Y, 5)
+        x1, y1 = sln1
+        plot(x1, y1, label="$u_1$")
+        #axis([a, b, 0, 1])
+        legend()
+        show()
+
+
     def calculate_error_l2_norm(self, dY):
         """
         Returns the L2 norm of the vector dY.

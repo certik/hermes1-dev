@@ -11,18 +11,6 @@ from hermes1d import Node, Element, Mesh, DiscreteProblem
 from math import pi
 from numpy import zeros
 
-def plot_Y(Y, a, b):
-    # plot the result:
-    from pylab import plot, legend, show, clf, axis
-    #clf()
-    # linearize the solution, divide each element into 5
-    sln1, = d.linearize(Y, 5)
-    x1, y1 = sln1
-    plot(x1, y1, label="$u_1$")
-    axis([a, b, 0, 1])
-    #legend()
-    show()
-
 # interval end points
 a = 0.
 b = 5.
@@ -64,4 +52,4 @@ d.assign_dofs()
 
 Y = d.solve_Y(euler=False)
 
-plot_Y(Y, a, b)
+d.plot_Y(Y)
