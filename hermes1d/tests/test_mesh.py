@@ -361,3 +361,70 @@ def test_discrete_problem2():
     J = d.assemble_J(Y)
     F = d.assemble_F()
     x = d.solve(J, F)
+
+def test_copy():
+    n1 = Node(0)
+    n2 = Node(1)
+    n3 = Node(2)
+    n4 = Node(3)
+    e1 = Element(n1, n2, order=1)
+    e2 = Element(n2, n3, order=2)
+    e3 = Element(n3, n4, order=1)
+    nodes = (n1, n2, n3, n4)
+    elements = (e1, e2, e3)
+    m1 = Mesh(nodes, elements)
+    m1.set_bc(left=True, value=1)
+
+    m2 = m1.copy()
+    assert len(m1.elements) == len(m2.elements)
+    assert m2.elements[0].order == 1
+    assert m2.elements[1].order == 2
+    assert m2.elements[0].order == 1
+    # this tests that the boundary condition is properly copied:
+    assert m2._left_lift == True
+    assert m2._right_lift == False
+    assert m2._left_value == 1
+
+def test_refine_all_elements1():
+    n1 = Node(0)
+    n2 = Node(1)
+    n3 = Node(2)
+    n4 = Node(3)
+    e1 = Element(n1, n2, order=1)
+    e2 = Element(n2, n3, order=2)
+    e3 = Element(n3, n4, order=1)
+    nodes = (n1, n2, n3, n4)
+    elements = (e1, e2, e3)
+    m1 = Mesh(nodes, elements)
+    m1.set_bc(left=True, value=1)
+
+    m1.refine_all_elements()
+    assert len(m1.elements) == 6
+    assert m1.elements[0].order == 1
+    assert m1.elements[1].order == 1
+    assert m1.elements[2].order == 2
+    assert m1.elements[3].order == 2
+    assert m1.elements[4].order == 1
+    assert m1.elements[5].order == 1
+
+def test_refine_all_elements2():
+    n1 = Node(0)
+    n2 = Node(1)
+    n3 = Node(2)
+    n4 = Node(3)
+    e1 = Element(n1, n2, order=1)
+    e2 = Element(n2, n3, order=2)
+    e3 = Element(n3, n4, order=1)
+    nodes = (n1, n2, n3, n4)
+    elements = (e1, e2, e3)
+    m1 = Mesh(nodes, elements)
+    m1.set_bc(left=True, value=1)
+
+    m1.refine_all_elements(increase_porder=True)
+    assert len(m1.elements) == 6
+    assert m1.elements[0].order == 2
+    assert m1.elements[1].order == 2
+    assert m1.elements[2].order == 3
+    assert m1.elements[3].order == 3
+    assert m1.elements[4].order == 2
+    assert m1.elements[5].order == 2

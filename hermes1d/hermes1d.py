@@ -13,11 +13,15 @@ class Node(object):
     """
 
     def __init__(self, x):
-        self._x = x
+        self._x = float(x)
 
     @property
     def x(self):
         return self._x
+
+    def __str__(self):
+        s = "(%f)" % self._x
+        return s
 
     def __repr__(self):
         s = "<Node x=%f>" % self._x
@@ -33,6 +37,24 @@ class Element(object):
         self._order = order
         self._dofs = [-1]*(order+1)
         self._lifts = [0.]*(order+1)
+
+    def copy(self):
+        """
+        Returns a copy of the element.
+        """
+        e = Element(self._nodes[0], self._nodes[1], self._order)
+        e._dofs = self._dofs
+        e._lifts = self._lifts
+        return e
+
+    def __str__(self):
+        return "El(%2d (x=%f), %2d (x=%f), order=%d)" % (
+                self._dofs[0],
+                self._nodes[0].x,
+                self._dofs[1],
+                self._nodes[1].x,
+                self._order,
+                )
 
     @property
     def nodes(self):
@@ -171,6 +193,13 @@ class Mesh(object):
         self._left_lift = False
         self._right_lift = False
 
+    def __str__(self):
+        s = "Mesh, nodes=%d elements=%d\n" % (len(self._nodes),
+                len(self._elements))
+        for i, e in enumerate(self._elements):
+            s += "  el_id=%d: %s\n" % (i, str(e))
+        return s
+
     @property
     def nodes(self):
         return self._nodes
@@ -236,6 +265,45 @@ class Mesh(object):
     @property
     def dof_end(self):
         return self._end_i
+
+    def copy(self):
+        """
+        Returns a copy of the current mesh including the boundary condition.
+        """
+        nodes = self._nodes
+        elements = [e.copy() for e in self._elements]
+        m = Mesh(nodes, elements)
+        m._left_lift = self._left_lift
+        if m._left_lift:
+            m._left_value = self._left_value
+        m._right_lift = self._right_lift
+        if m._right_lift:
+            m._right_value = self._right_value
+        return m
+
+    def refine_all_elements(self, increase_porder=False):
+        """
+        Uniformly refines all elements *inplace*.
+
+        If increase_porder==True, then it also increases the polynomial order
+        of all elements by 1.
+
+        Inplace means that this instance of the mesh will be modified.
+        """
+        new_elements = []
+        for e in self._elements:
+            n1 = e.nodes[0]
+            n3 = e.nodes[1]
+            n2 = Node((n1.x+n3.x)/2)
+            order = e.order
+            if increase_porder:
+                order += 1
+            e1 = Element(n1, n2, order)
+            e2 = Element(n2, n3, order)
+            new_elements.append(e1)
+            new_elements.append(e2)
+        self._elements = new_elements
+
 
 class DiscreteProblem(object):
 
@@ -395,7 +463,7 @@ class DiscreteProblem(object):
     def solve(self, J, F):
         return solve(J, -F)
 
-    def solve_Y(self, euler=False):
+    def solve_Y(self, euler=False, verbose=True):
         """
         Solves the nonlinear problem for Y.
 
@@ -420,7 +488,9 @@ class DiscreteProblem(object):
             #plot_Y(Y, a, b)
             error_dY = self.calculate_error_l2_norm(dY)
             error_F = self.calculate_error_l2_norm(self.assemble_F(Y))
-            print "it=%d, l2_norm_dY=%e, l2_norm_F=%e" % (i, error_dY, error_F)
+            if verbose:
+                print "it=%d, l2_norm_dY=%e, l2_norm_F=%e" % (i, error_dY, 
+                        error_F)
             error = max(error_dY, error_F)
             i += 1
         return Y
