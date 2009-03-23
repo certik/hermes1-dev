@@ -6,10 +6,12 @@ y(0)=1
 
 So the solution is y(x) = exp(-x)
 """
-from hermes1d import Node, Element, Mesh, DiscreteProblem
-
 from math import pi
+
 from numpy import zeros
+
+from hermes1d import Node, Element, Mesh, DiscreteProblem, Solution
+
 
 def F(i, Y, t):
     if i == 0:
@@ -51,6 +53,11 @@ rm.refine_all_elements(increase_porder=True)
 Y, d = calculate_sln(F, DFDY, m)
 rY, rd = calculate_sln(F, DFDY, rm)
 
+sln = Solution(d, Y)
+rsln = Solution(rd, rY)
+d.calc_element_errors_l2(sln, rsln)
+d.plot_errors()
+
 from pylab import plot, legend, show, clf, axis
 sln1, = d.linearize(Y, 5)
 x1, y1 = sln1
@@ -60,4 +67,3 @@ x1, y1 = sln1
 plot(x1, y1, label="u reference")
 legend()
 show()
-

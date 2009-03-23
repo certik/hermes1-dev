@@ -304,7 +304,6 @@ class Mesh(object):
             new_elements.append(e2)
         self._elements = new_elements
 
-
 class DiscreteProblem(object):
 
     def __init__(self, meshes=[]):
@@ -315,6 +314,7 @@ class DiscreteProblem(object):
         >>> d = DiscreteProblem(meshes=[m1, m2])
         """
         self._meshes = meshes
+        self._Y = None
 
     def define_ode(self, F, DFDY):
         """
@@ -493,6 +493,7 @@ class DiscreteProblem(object):
                         error_F)
             error = max(error_dY, error_F)
             i += 1
+        self._Y = Y
         return Y
 
     def linearize(self, Y, n):
@@ -641,3 +642,92 @@ class DiscreteProblem(object):
             coeffs_one_mesh = Z[mi, 1:]
             Y[m.dof_start:m.dof_start+len(coeffs_one_mesh)] = coeffs_one_mesh
         return Y
+
+    def calc_element_errors_l2(self, sln, rsln):
+        """
+        Calculates the L2 norm of the error between sln and rsln on each
+        element.
+        """
+        #XXX: this requires all meshes to have the same amount of elements
+        element_errors = zeros((len(self._meshes),
+            len(self._meshes[0].elements)))
+        # change this to gauss points:
+        x_vals, w_orig = p_roots(20)
+        # we transforms the x_vals from -1..1 to -1..0:
+        x_vals_left = (x_vals - 1)/2
+        # we transforms the x_vals from -1..1 to 0..1:
+        x_vals_right = (x_vals + 1)/2
+        for mi in range(len(self._meshes)):
+            for ei in range(len(self._meshes[mi].elements)):
+                e = self._meshes[mi].elements[ei]
+                w = w_orig/2. * e.length
+                norm_e_squared = 0.
+                for i in range(len(x_vals)):
+                    sln_val = self.get_sol_value(mi, ei, sln._Y,
+                            x_vals_left[i],
+                            count_lift=True)
+                    rsln_val = rsln._dp.get_sol_value(mi, ei*2, rsln._Y,
+                            x_vals[i],
+                            count_lift=True)
+                    norm_e_squared += w[i] * (rsln_val-sln_val)**2
+                for i in range(len(x_vals)):
+                    sln_val = self.get_sol_value(mi, ei, sln._Y,
+                            x_vals_right[i],
+                            count_lift=True)
+                    rsln_val = rsln._dp.get_sol_value(mi, ei*2+1, rsln._Y,
+                            x_vals[i],
+                            count_lift=True)
+                    norm_e_squared += w[i] * (rsln_val-sln_val)**2
+                element_errors[mi, ei] = sqrt(norm_e_squared)
+        self._element_errors = element_errors
+        return element_errors
+
+    def plot_errors(self):
+        """
+        Plots the errors calculated
+        """
+        from pylab import plot
+        x = []
+        for e in self._meshes[0].elements:
+            x.append(e.nodes[0].x)
+            x.append(e.nodes[1].x)
+        y = self._element_errors[0, :]
+        yy = []
+        for _y in y:
+            yy.append(_y)
+            yy.append(_y)
+        print x
+        print yy
+        plot(x, yy, label="errors")
+
+
+class Solution(object):
+
+    def __init__(self, dp, Y):
+        self._dp = dp
+        self._Y = Y
+
+    def __sub__(self, other):
+        #if isinstance(other, Solution):
+        #    # make sure the "other" has more coarse mesh
+        #    assert len(other._Y) <= len(self._Y)
+        #    for
+        #    return self
+        return NotImplemented
+
+    def __abs__(self):
+        # XXX this is wrong:
+        return self
+
+    def plot(self, label=None):
+        """
+        Plots itself using matplotlib.
+        """
+        #XXX: this will work for 1 equation only:
+        sln1, = self._dp.linearize(self._Y, 5)
+        x1, y1 = sln1
+        from pylab import plot
+        if label is not None:
+            plot(x1, y1, label=label)
+        else:
+            plot(x1, y1)
