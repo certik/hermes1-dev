@@ -54,10 +54,10 @@ rY, rd = calculate_sln(F, DFDY, rm)
 from pylab import plot, legend, show, clf, axis
 sln1, = d.linearize(Y, 5)
 x1, y1 = sln1
-plot(x1, y1, label="$u_1$")
+plot(x1, y1, label="u")
 sln1, = rd.linearize(rY, 5)
 x1, y1 = sln1
-plot(x1, y1, label="$u_2$")
+plot(x1, y1, label="u reference")
 legend()
 show()
 
