@@ -62,25 +62,6 @@ d.define_ode(F, DFDY)
 # enumeration of unknowns:
 d.assign_dofs()
 
-# definition of the initial condition for the global Newton method:
-#Y = d.get_initial_condition_euler()
-#plot_Y(Y, a, b)
-#stop
-Y = zeros((d.ndofs,))
-
-# Newton's iteration:
-error = 1e10
-i = 0
-J = d.assemble_J(Y)
-while error > 1e-5:
-    F = d.assemble_F(Y)
-    dY = d.solve(J, F)
-    Y += dY
-    #plot_Y(Y, a, b)
-    error_dY = d.calculate_error_l2_norm(dY)
-    error_F = d.calculate_error_l2_norm(d.assemble_F(Y))
-    print "it=%d, l2_norm_dY=%e, l2_norm_F=%e" % (i, error_dY, error_F)
-    error = max(error_dY, error_F)
-    i += 1
+Y = d.solve_Y(euler=False)
 
 plot_Y(Y, a, b)

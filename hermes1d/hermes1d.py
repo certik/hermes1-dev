@@ -395,6 +395,36 @@ class DiscreteProblem(object):
     def solve(self, J, F):
         return solve(J, -F)
 
+    def solve_Y(self, euler=False):
+        """
+        Solves the nonlinear problem for Y.
+
+        euler ... if True, uses the implicit euler method to get the initial
+                  condition for the global Newton's method.
+        """
+        if euler:
+            Y = self.get_initial_condition_euler()
+        else:
+            Y = zeros((self.ndofs,))
+
+        # Newton's iteration:
+        error = 1e10
+        i = 0
+        J = self.assemble_J(Y)
+        # The F=self.assemble_F(Y) line is being executed twice, this should be
+        # improved:
+        while error > 1e-5:
+            F = self.assemble_F(Y)
+            dY = self.solve(J, F)
+            Y += dY
+            #plot_Y(Y, a, b)
+            error_dY = self.calculate_error_l2_norm(dY)
+            error_F = self.calculate_error_l2_norm(self.assemble_F(Y))
+            print "it=%d, l2_norm_dY=%e, l2_norm_F=%e" % (i, error_dY, error_F)
+            error = max(error_dY, error_F)
+            i += 1
+        return Y
+
     def linearize(self, Y, n):
         """
         Linearize the solution
