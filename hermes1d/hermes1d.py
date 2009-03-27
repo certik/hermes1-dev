@@ -225,22 +225,27 @@ class Mesh(object):
             self._right_lift = True
             self._right_value = value
 
-    def assign_dofs(self, start_i=0):
+    def assign_dofs(self, start_i=0, elem_l=None, elem_r=None, left_lift=None,
+            left_value=None):
         self._start_i = start_i
+        if elem_l is None:
+            elem_l = 0
+        if elem_r is None:
+            elem_r = len(self._elements)-1
         # assign the vertex functions
         i = start_i
         if self._left_lift:
-            el_list = self._elements[1:]
-            self._elements[0].assign_dofs([1], [i])
-            self._elements[0]._lifts[0] = self._left_value
+            el_list = self._elements[elem_l+1:]
+            self._elements[elem_l].assign_dofs([1], [i])
+            self._elements[elem_l]._lifts[0] = self._left_value
         else:
             el_list = self._elements
         for e in el_list:
             e.assign_dofs([0, 1], [i, i+1])
             i += 1
         if self._right_lift:
-            self._elements[-1].assign_dofs([1], [-1])
-            self._elements[-1]._lifts[1] = self._right_value
+            self._elements[elem_r].assign_dofs([1], [-1])
+            self._elements[elem_r]._lifts[1] = self._right_value
             i -= 1
 
         # assign bubble functions
@@ -586,6 +591,66 @@ class DiscreteProblem(object):
             using projections: e.g. the implicit Euler method would do several
             steps in each element and that information would be used for the
             projection.
+        """
+        Z = zeros((len(self._meshes), len(self._meshes[0].elements)+1))
+        for mi, m in enumerate(self._meshes):
+            if not m._left_lift:
+                raise Exception("get_initial_condition_euler() only works if all boundary conditions are given on the left.")
+
+            Z[mi, 0] = m._left_value
+        def get_F(Z, t):
+            """
+            Evaluates the RHS for the vector Z and time tau.
+            """
+            Z0 = zeros((len(self._meshes),))
+            for mi, m in enumerate(self._meshes):
+                Z0[mi] = self._F(mi, Z, t)
+            return Z0
+        def get_phi(Z, Zprev, tau, t):
+            return Z - tau*get_F(Z, t) - Zprev
+        def get_J(Z, tau, t):
+            mat = eye(len(self._meshes))
+            for i in range(len(self._meshes)):
+                for j in range(len(self._meshes)):
+                    mat[i, j] += - tau*self._DFDY(i, j, Z, t)
+            return mat
+
+        # initial time and initial condition vector:
+        tprev = self._meshes[0].elements[0].nodes[0].x
+        Zprev = Z[:, 0].copy()
+        Znext = Zprev[:].copy()
+        for el_i in range(len(self._meshes[0].elements)):
+            #print "doing element:", el_i
+            tau = self._meshes[0].elements[el_i].length
+            tnext = tprev + tau
+            error = 1e10
+            i = 0
+            while error > tol:
+                J = get_J(Zprev, tau, tprev)
+                phi = get_phi(Znext, Zprev, tau, tprev)
+                dZ = solve(J, -phi)
+                Znext += dZ
+                error_dZ = l2_norm(dZ)
+                error_phi = l2_norm(get_phi(Znext, Zprev, tau, tnext))
+                #print "it=%d, l2_norm_dZ=%e, l2_norm_phi=%e" %  \
+                #    (i, error_dZ, error_phi)
+                error = max(error_dZ, error_phi)
+                i += 1
+            Z[:, el_i+1] = Znext[:].copy()
+            Zprev = Znext[:].copy()
+            tprev = tnext
+
+
+        # now assign the Z to the vertex dofs and leave zeros in the bubbles
+        Y = zeros((self.ndofs,))
+        for mi, m in enumerate(self._meshes):
+            coeffs_one_mesh = Z[mi, 1:]
+            Y[m.dof_start:m.dof_start+len(coeffs_one_mesh)] = coeffs_one_mesh
+        return Y
+
+    def get_initial_condition_newton(self, tol=1e-10):
+        """
+        Calculates the initial vector using a Newton iteration on each element.
         """
         Z = zeros((len(self._meshes), len(self._meshes[0].elements)+1))
         for mi, m in enumerate(self._meshes):

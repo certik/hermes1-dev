@@ -78,9 +78,10 @@ d.define_ode(F, DFDY)
 d.assign_dofs()
 
 # definition of the initial condition for the global Newton method:
-Y = d.get_initial_condition_euler()
-#plot_Y(Y, a, b)
-#stop
+#Y = d.get_initial_condition_euler()
+Y = d.get_initial_condition_newton()
+plot_Y(Y, a, b)
+stop
 #Y = zeros((d.ndofs,))
 
 # Newton's iteration:
