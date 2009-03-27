@@ -232,14 +232,17 @@ class Mesh(object):
             elem_l = 0
         if elem_r is None:
             elem_r = len(self._elements)-1
+        el_list = self._elements[elem_l: elem_r+1]
         # assign the vertex functions
         i = start_i
-        if self._left_lift:
-            el_list = self._elements[elem_l+1:]
+        if left_lift is not None:
+            el_list = el_list[1:]
+            self._elements[elem_l].assign_dofs([1], [i])
+            self._elements[elem_l]._lifts[0] = left_value
+        elif self._left_lift:
+            el_list = el_list[1:]
             self._elements[elem_l].assign_dofs([1], [i])
             self._elements[elem_l]._lifts[0] = self._left_value
-        else:
-            el_list = self._elements
         for e in el_list:
             e.assign_dofs([0, 1], [i, i+1])
             i += 1
@@ -250,7 +253,7 @@ class Mesh(object):
 
         # assign bubble functions
         i += 1
-        for e in self._elements:
+        for e in self._elements[elem_l: elem_r+1]:
             local_dofs = range(2, e.order+1)
             global_dofs = range(i, i+e.order-1)
             i += e.order-1
