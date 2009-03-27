@@ -488,3 +488,57 @@ def test_assign_dofs3():
     assert m.elements[2].dofs[3] == 6
 
     assert ndofs == 7
+
+def test_assign_dofs4():
+    n1 = Node(1)
+    n2 = Node(3)
+    n3 = Node(4)
+    n4 = Node(5)
+    e1 = Element(n1, n2, order=3)
+    e2 = Element(n2, n3, order=3)
+    e3 = Element(n3, n4, order=3)
+    nodes = (n1, n2, n3, n4)
+    elements = (e1, e2, e3)
+    m = Mesh(nodes, elements)
+    ndofs = m.assign_dofs(elem_l=1, elem_r=2, left_lift=True, left_value=3)
+    assert m.elements[1].dofs[0] == -1
+    assert m.elements[1].get_dirichlet_value(0) == 3
+    assert m.elements[1].dofs[0] == -1
+    assert m.elements[1].dofs[1] == 0
+    assert m.elements[1].dofs[2] == 2
+    assert m.elements[1].dofs[3] == 3
+
+    assert m.elements[2].dofs[0] == 0
+    assert m.elements[2].dofs[1] == 1
+    assert m.elements[2].dofs[2] == 4
+    assert m.elements[2].dofs[3] == 5
+
+    assert ndofs == 6
+
+def test_assign_dofs5():
+    n1 = Node(1)
+    n2 = Node(3)
+    n3 = Node(4)
+    n4 = Node(5)
+    e1 = Element(n1, n2, order=3)
+    e2 = Element(n2, n3, order=3)
+    e3 = Element(n3, n4, order=3)
+    nodes = (n1, n2, n3, n4)
+    elements = (e1, e2, e3)
+    m = Mesh(nodes, elements)
+    m.set_bc(left=False, value=5)
+    ndofs = m.assign_dofs(elem_l=1, elem_r=2, left_lift=True, left_value=3)
+    assert m.elements[1].dofs[0] == -1
+    assert m.elements[1].get_dirichlet_value(0) == 3
+    assert m.elements[1].dofs[0] == -1
+    assert m.elements[1].dofs[1] == 0
+    assert m.elements[1].dofs[2] == 1
+    assert m.elements[1].dofs[3] == 2
+
+    assert m.elements[2].dofs[0] == 0
+    assert m.elements[2].dofs[1] == -1
+    assert m.elements[2].get_dirichlet_value(1) == 5
+    assert m.elements[2].dofs[2] == 3
+    assert m.elements[2].dofs[3] == 4
+
+    assert ndofs == 5

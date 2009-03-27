@@ -227,6 +227,17 @@ class Mesh(object):
 
     def assign_dofs(self, start_i=0, elem_l=None, elem_r=None, left_lift=None,
             left_value=None):
+        """
+        Assigns dofs on one mesh.
+
+        For elements elem_l..elem_r (including both),
+        starting from the dof number start_i and optionally allowing a left
+        boundary condition, specified by left_lift=True and left_value=<some
+        number> --- this will override the boundary condition specified using
+        set_bc(). The right boundary condition is not influenced by this, e.g.
+        it is always properly taken into account (if the user specified it
+        using set_bc()).
+        """
         self._start_i = start_i
         if elem_l is None:
             elem_l = 0
@@ -341,7 +352,8 @@ class DiscreteProblem(object):
                 return mi
         raise ValueError("No mesh found for global_dof=%d" % global_dof_number)
 
-    def assign_dofs(self):
+    def assign_dofs(self, elem_l=None, elem_r=None, left_lift=None,
+            left_value=None):
         """
         Assigns dofs for all the meshes in the problem.
         """
