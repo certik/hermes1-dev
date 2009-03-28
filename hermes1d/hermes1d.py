@@ -378,10 +378,14 @@ class DiscreteProblem(object):
         """
         return self._ndofs
 
-    def assemble_J(self, Y):
+    def assemble_J(self, Y, elem_l=None, elem_r=None):
         J = zeros((self._ndofs, self._ndofs))
+        if elem_l is None:
+            elem_l = 0
+        if elem_r is None:
+            elem_r = len(self._meshes[0]._elements)-1
         for m in self._meshes:
-            for e in m.elements:
+            for e in m.elements[elem_l: elem_r+1]:
                 for i in range(len(e.dofs)):
                     for j in range(len(e.dofs)):
                         i_glob = e.dofs[i]
@@ -431,12 +435,17 @@ class DiscreteProblem(object):
         #print val, e.dofs
         return val
 
-    def assemble_F(self, Y=None):
+    def assemble_F(self, Y=None, elem_l=None, elem_r=None):
         if Y is None:
             Y = zeros((self._ndofs,))
+        if elem_l is None:
+            elem_l = 0
+        if elem_r is None:
+            elem_r = len(self._meshes[0]._elements)-1
         F = zeros((self._ndofs,))
         for m in self._meshes:
-            for el_num, e in enumerate(m.elements):
+            for el_num in range(elem_l, elem_r+1):
+                e = m.elements[el_num]
                 for i in range(len(e.dofs)):
                     i_glob = e.dofs[i]
                     if i_glob == -1:

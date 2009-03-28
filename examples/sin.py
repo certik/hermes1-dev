@@ -75,13 +75,13 @@ def DFDY(i, j, Y, t):
 d.define_ode(F, DFDY)
 
 # enumeration of unknowns:
-d.assign_dofs()
+d.assign_dofs(elem_l=0, elem_r=N-1)
 
 # definition of the initial condition for the global Newton method:
 #Y = d.get_initial_condition_euler()
 Y = d.get_initial_condition_newton()
-plot_Y(Y, a, b)
-stop
+#plot_Y(Y, a, b)
+#stop
 #Y = zeros((d.ndofs,))
 
 # Newton's iteration:
