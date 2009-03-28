@@ -30,7 +30,7 @@ a = 0.
 b = pi*(1./4+1)
 
 # number of elements:
-N = 20
+N = 5
 
 # x values of the nodes:
 x_values =[(b-a)/N * i for i in range(N+1)]
@@ -95,6 +95,7 @@ def newton(elem_l, elem_r, left_values):
         i += 1
     return Y
 
-Y = newton(4, 18, [0, 1])
+Y = newton(0, 0, [0, 1])
+print Y
 
-plot_Y(Y, a, b)
+#plot_Y(Y, a, b)
