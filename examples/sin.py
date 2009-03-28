@@ -75,11 +75,13 @@ def DFDY(i, j, Y, t):
 d.define_ode(F, DFDY)
 
 # enumeration of unknowns:
-d.assign_dofs(elem_l=0, elem_r=N-1)
+d.assign_dofs(elem_l=10, elem_r=15, left_lift=True, left_values=[0, 1])
 
 # definition of the initial condition for the global Newton method:
-#Y = d.get_initial_condition_euler()
-Y = d.get_initial_condition_newton()
+
+Y = d.get_initial_condition_euler(elem_l=10, elem_r=15,
+        left_lift=True, left_values=[0, 1])
+#Y = d.get_initial_condition_newton()
 #plot_Y(Y, a, b)
 #stop
 #Y = zeros((d.ndofs,))
@@ -87,9 +89,9 @@ Y = d.get_initial_condition_newton()
 # Newton's iteration:
 error = 1e10
 i = 0
-J = d.assemble_J(Y)
+J = d.assemble_J(Y, elem_l=10, elem_r=15)
 while error > 1e-5:
-    F = d.assemble_F(Y)
+    F = d.assemble_F(Y, elem_l=10, elem_r=15)
     dY = d.solve(J, F)
     Y += dY
     #plot_Y(Y, a, b)

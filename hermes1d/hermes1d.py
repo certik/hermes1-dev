@@ -606,7 +606,8 @@ class DiscreteProblem(object):
                 norm += norm_e_squared
         return sqrt(norm)
 
-    def get_initial_condition_euler(self, tol=1e-10):
+    def get_initial_condition_euler(self, tol=1e-10, elem_l=None, elem_r=None,
+            left_lift=None, left_values=None):
         """
         Calculates the initial vector to the Newton's iteration.
 
@@ -624,12 +625,19 @@ class DiscreteProblem(object):
             steps in each element and that information would be used for the
             projection.
         """
-        Z = zeros((len(self._meshes), len(self._meshes[0].elements)+1))
+        Z = zeros((len(self._meshes), elem_r - elem_l + 2))
+        if elem_l is None:
+            elem_l = 0
+        if elem_r is None:
+            elem_r = len(self._meshes[0]._elements)-1
         for mi, m in enumerate(self._meshes):
-            if not m._left_lift:
+            if left_lift:
+                Z[mi, 0] = left_values[mi]
+            elif m._left_lift and elem_l == 0:
+                Z[mi, 0] = m._left_value
+            else:
                 raise Exception("get_initial_condition_euler() only works if all boundary conditions are given on the left.")
 
-            Z[mi, 0] = m._left_value
         def get_F(Z, t):
             """
             Evaluates the RHS for the vector Z and time tau.
@@ -648,10 +656,10 @@ class DiscreteProblem(object):
             return mat
 
         # initial time and initial condition vector:
-        tprev = self._meshes[0].elements[0].nodes[0].x
+        tprev = self._meshes[0].elements[elem_l].nodes[0].x
         Zprev = Z[:, 0].copy()
         Znext = Zprev[:].copy()
-        for el_i in range(len(self._meshes[0].elements)):
+        for el_i in range(elem_l, elem_r+1):
             #print "doing element:", el_i
             tau = self._meshes[0].elements[el_i].length
             tnext = tprev + tau
@@ -668,7 +676,7 @@ class DiscreteProblem(object):
                 #    (i, error_dZ, error_phi)
                 error = max(error_dZ, error_phi)
                 i += 1
-            Z[:, el_i+1] = Znext[:].copy()
+            Z[:, el_i+1-elem_l] = Znext[:].copy()
             Zprev = Znext[:].copy()
             tprev = tnext
 
