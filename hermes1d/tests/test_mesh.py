@@ -608,3 +608,44 @@ def test_DiscreteProblem_assign_dofs1():
     assert m2.elements[2].dofs[2] == 3 + 3
 
     assert ndofs == 7
+
+def test_DiscreteProblem_assign_dofs2():
+    n1 = Node(1)
+    n2 = Node(3)
+    n3 = Node(4)
+    n4 = Node(5)
+    e1 = Element(n1, n2, order=3)
+    e2 = Element(n2, n3, order=1)
+    e3 = Element(n3, n4, order=2)
+    nodes = (n1, n2, n3, n4)
+    elements = (e1, e2, e3)
+    m1 = Mesh(nodes, elements)
+    m1.set_bc(left=False, value=1)
+    e4 = Element(n1, n2, order=3)
+    e5 = Element(n2, n3, order=1)
+    e6 = Element(n3, n4, order=2)
+    elements = (e4, e5, e6)
+    m2 = Mesh(nodes, elements)
+    m2.set_bc(left=True, value=1)
+
+    d = DiscreteProblem(meshes=[m1, m2])
+    ndofs = d.assign_dofs(elem_l=1, elem_r=2, left_lift=True,
+            left_values=[3, 5])
+
+    assert m1.elements[1].dofs[0] == -1
+    assert m1.elements[1].get_dirichlet_value(0) == 3
+    assert m1.elements[1].dofs[1] == 0
+
+    assert m1.elements[2].dofs[0] == 0
+    assert m1.elements[2].dofs[1] == -1
+    assert m1.elements[2].dofs[2] == 1
+
+    assert m2.elements[1].dofs[0] == -1
+    assert m2.elements[1].get_dirichlet_value(0) == 5
+    assert m2.elements[1].dofs[1] == 0 + 2
+
+    assert m2.elements[2].dofs[0] == 0 + 2
+    assert m2.elements[2].dofs[1] == 1 + 2
+    assert m2.elements[2].dofs[2] == 2 + 2
+
+    assert ndofs == 5
