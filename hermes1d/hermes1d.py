@@ -250,14 +250,14 @@ class Mesh(object):
             el_list = el_list[1:]
             self._elements[elem_l].assign_dofs([1], [i])
             self._elements[elem_l]._lifts[0] = left_value
-        elif self._left_lift:
+        elif self._left_lift and elem_l == 0:
             el_list = el_list[1:]
             self._elements[elem_l].assign_dofs([1], [i])
             self._elements[elem_l]._lifts[0] = self._left_value
         for e in el_list:
             e.assign_dofs([0, 1], [i, i+1])
             i += 1
-        if self._right_lift:
+        if self._right_lift and elem_r == len(self._elements)-1:
             self._elements[elem_r].assign_dofs([1], [-1])
             self._elements[elem_r]._lifts[1] = self._right_value
             i -= 1
@@ -353,13 +353,21 @@ class DiscreteProblem(object):
         raise ValueError("No mesh found for global_dof=%d" % global_dof_number)
 
     def assign_dofs(self, elem_l=None, elem_r=None, left_lift=None,
-            left_value=None):
+            left_values=None):
         """
         Assigns dofs for all the meshes in the problem.
+
+        Only uses elements elem_l..elem_r (including both). Optionally you can
+        specify left B.C. at *all* meshes by setting left_lift=True, then
+        lef_values contains a vector of the values (one value for one mesh).
         """
         i = 0
-        for m in self._meshes:
-            i = m.assign_dofs(start_i=i)
+        for mi, m in enumerate(self._meshes):
+            if left_lift:
+                i = m.assign_dofs(start_i=i, elem_l=elem_l, elem_r=elem_r,
+                        left_lift=True, left_value=left_values[mi])
+            else:
+                i = m.assign_dofs(start_i=i, elem_l=elem_l, elem_r=elem_r)
         self._ndofs = i
         return i
 
